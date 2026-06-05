@@ -2,7 +2,7 @@ require('dotenv').config();
 const { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } = require('@aws-sdk/client-sqs');
 const logger = require('../utils/logger');
 
-const sqs = new SQSClient({
+const sqsClient = new SQSClient({
   region: process.env.AWS_REGION,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -10,16 +10,17 @@ const sqs = new SQSClient({
   }
 });
 
-// Push worker logs events; Socket.IO push is handled in-process via notificationSocket
-const processMessage = async (message) => {
-  const payload = JSON.parse(message.Body);
+const processMessage = async (msg) => {
+  const payload = JSON.parse(msg.Body);
+  // actual socket push happens in-process via notificationSocket when notification is created
+  // this worker just logs it for audit trail
   logger.info(`Push notification delivered: ${JSON.stringify(payload)}`);
 };
 
 const poll = async () => {
   while (true) {
     try {
-      const { Messages } = await sqs.send(new ReceiveMessageCommand({
+      const { Messages } = await sqsClient.send(new ReceiveMessageCommand({
         QueueUrl: process.env.SQS_QUEUE_URL,
         MaxNumberOfMessages: 10,
         WaitTimeSeconds: 20
@@ -29,7 +30,7 @@ const poll = async () => {
         for (const msg of Messages) {
           try {
             await processMessage(msg);
-            await sqs.send(new DeleteMessageCommand({
+            await sqsClient.send(new DeleteMessageCommand({
               QueueUrl: process.env.SQS_QUEUE_URL,
               ReceiptHandle: msg.ReceiptHandle
             }));

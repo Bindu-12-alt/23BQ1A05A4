@@ -1,7 +1,8 @@
 const morgan = require('morgan');
 const logger = require('./logger');
 
-const stream = { write: (message) => logger.info(message.trim()) };
+// pipe morgan output into winston so everything goes to the same log files
+const stream = { write: (msg) => logger.info(msg.trim()) };
 
 const requestLogger = morgan(
   (tokens, req, res) => JSON.stringify({

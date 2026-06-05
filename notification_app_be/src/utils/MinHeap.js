@@ -11,28 +11,34 @@ class MinHeap {
   pop() {
     const top = this.heap[0];
     const last = this.heap.pop();
-    if (this.heap.length > 0) { this.heap[0] = last; this._sinkDown(0); }
+    // move last element to root then fix heap downward
+    if (this.heap.length > 0) {
+      this.heap[0] = last;
+      this._sinkDown(0);
+    }
     return top;
   }
 
-  _bubbleUp(i) {
-    while (i > 0) {
-      const p = Math.floor((i - 1) / 2);
-      if (this.heap[p].score <= this.heap[i].score) break;
-      [this.heap[p], this.heap[i]] = [this.heap[i], this.heap[p]];
-      i = p;
+  _bubbleUp(idx) {
+    while (idx > 0) {
+      const parentIdx = Math.floor((idx - 1) / 2);
+      if (this.heap[parentIdx].score <= this.heap[idx].score) break;
+      [this.heap[parentIdx], this.heap[idx]] = [this.heap[idx], this.heap[parentIdx]];
+      idx = parentIdx;
     }
   }
 
-  _sinkDown(i) {
-    const n = this.heap.length;
+  _sinkDown(idx) {
+    const len = this.heap.length;
     while (true) {
-      let s = i, l = 2 * i + 1, r = 2 * i + 2;
-      if (l < n && this.heap[l].score < this.heap[s].score) s = l;
-      if (r < n && this.heap[r].score < this.heap[s].score) s = r;
-      if (s === i) break;
-      [this.heap[s], this.heap[i]] = [this.heap[i], this.heap[s]];
-      i = s;
+      let smallest = idx;
+      const left = 2 * idx + 1;
+      const right = 2 * idx + 2;
+      if (left < len && this.heap[left].score < this.heap[smallest].score) smallest = left;
+      if (right < len && this.heap[right].score < this.heap[smallest].score) smallest = right;
+      if (smallest === idx) break;
+      [this.heap[smallest], this.heap[idx]] = [this.heap[idx], this.heap[smallest]];
+      idx = smallest;
     }
   }
 }

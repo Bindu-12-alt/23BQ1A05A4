@@ -4,7 +4,7 @@ const nodemailer = require('nodemailer');
 const Student = require('../models/Student');
 const logger = require('../utils/logger');
 
-const sqs = new SQSClient({
+const sqsClient = new SQSClient({
   region: process.env.AWS_REGION,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -18,11 +18,12 @@ const transporter = nodemailer.createTransport({
   auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
 });
 
-const processMessage = async (message) => {
-  const { studentIds, title, type, message: body } = JSON.parse(message.Body);
-  const students = await Student.findAll({ where: { id: studentIds }, attributes: ['email'] });
+const processMessage = async (msg) => {
+  const { studentIds, title, type, message: body } = JSON.parse(msg.Body);
+  const studentList = await Student.findAll({ where: { id: studentIds }, attributes: ['email'] });
+  console.log(`[debug] emailing ${studentList.length} students`);
 
-  for (const student of students) {
+  for (const student of studentList) {
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: student.email,
@@ -36,9 +37,10 @@ const processMessage = async (message) => {
 const poll = async () => {
   while (true) {
     try {
-      const { Messages } = await sqs.send(new ReceiveMessageCommand({
+      const { Messages } = await sqsClient.send(new ReceiveMessageCommand({
         QueueUrl: process.env.SQS_QUEUE_URL,
         MaxNumberOfMessages: 10,
+        // long polling so we're not hammering SQS with empty requests
         WaitTimeSeconds: 20
       }));
 
@@ -46,7 +48,7 @@ const poll = async () => {
         for (const msg of Messages) {
           try {
             await processMessage(msg);
-            await sqs.send(new DeleteMessageCommand({
+            await sqsClient.send(new DeleteMessageCommand({
               QueueUrl: process.env.SQS_QUEUE_URL,
               ReceiptHandle: msg.ReceiptHandle
             }));
